@@ -5,7 +5,7 @@ import { render, describe, copyFrom } from "./ui.js";
 import { createWatch } from "./watch.js";
 
 const BOXES = ["connection", "webrtc", "dns", "ipv6"];
-const NO_VPN = "no vpn detected, so there is nothing to leak :|";
+const NO_VPN = "no vpn detected, so there is nothing to leak :3";
 const UNKNOWN = "could not tell if a vpn is on, so leaks cannot be judged :/";
 
 const copyIpButton = document.getElementById("copy-ip");
@@ -26,7 +26,7 @@ async function check() {
   const current = () => token === run;
   const show = (...args) => current() && render(...args);
 
-  for (const id of BOXES) render(id, "checking", "checking... :o");
+  for (const id of BOXES) render(id, "checking", "checking... :3");
   copyIpButton.hidden = true;
   checkedEl.textContent = "";
   document.title = "vpn_checkr";
@@ -38,7 +38,7 @@ async function check() {
   const status = await checkConnection();
   if (!current()) return;
   watch.update(status);
-  checkedEl.textContent = "checked " + new Date().toLocaleTimeString();
+  checkedEl.textContent = "checked " + new Date().toLocaleTimeString() + " :3";
 
   if (!status) {
     show("connection", "bad", "could not reach the lookup services. check your connection or ad blocker :(");
@@ -63,17 +63,17 @@ async function check() {
     );
   }
   copyIpButton.hidden = false;
-  document.title = (main.unknown ? "vpn unknown" : vpn ? "vpn on" : "no vpn") + " · vpn_checkr";
+  document.title = (main.unknown ? "vpn unknown" : vpn ? "vpn on :3" : "no vpn") + " · vpn_checkr";
 
   const known = new Set([v4, v6].filter(Boolean).map(ip => ip.toLowerCase()));
 
   const ipv6Test = async () => {
     if (!other) {
-      show("ipv6", vpn ? "good" : "info", vpn ? "no leak: " + (v6 ? "you only have ipv6, and it was checked above" : "you have no ipv6 connection") + " :>" : skip);
+      show("ipv6", vpn ? "good" : "info", vpn ? "no leak: " + (v6 ? "you only have ipv6, and it was checked above" : "you have no ipv6 connection") + " :3" : skip);
     } else if (!vpn) {
       show("ipv6", "info", skip, ["ipv6 address: " + describe(other)]);
     } else if (other.vpn) {
-      show("ipv6", "good", "no leak: your ipv6 traffic goes through a vpn too :>", [describe(other)]);
+      show("ipv6", "good", "no leak: your ipv6 traffic goes through a vpn too :3", [describe(other)]);
     } else if (other.unknown) {
       show("ipv6", "info", "could not tell if your ipv6 traffic goes through the vpn :/", [describe(other)]);
     } else {
@@ -84,12 +84,12 @@ async function check() {
   const webrtcTest = async () => {
     const found = await rtcPromise;
     if (found === null) {
-      show("webrtc", vpn ? "good" : "info", vpn ? "no leak: webrtc is turned off in this browser :>" : skip);
+      show("webrtc", vpn ? "good" : "info", vpn ? "no leak: webrtc is turned off in this browser :3" : skip);
       return;
     }
     const extra = found.filter(ip => !known.has(ip.toLowerCase()));
     if (!extra.length) {
-      const status = found.length ? "no leak: webrtc only shows the address above :>" : "no leak: webrtc did not show any address :>";
+      const status = found.length ? "no leak: webrtc only shows the address above :3" : "no leak: webrtc did not show any address :3";
       show("webrtc", vpn ? "good" : "info", vpn ? status : skip, found.length ? ["webrtc shows: " + found.join(", ")] : []);
       return;
     }
@@ -132,7 +132,7 @@ async function check() {
 
 // plain text version of every box, for pasting into a chat or a bug report
 function resultsText() {
-  const lines = ["vpn_checkr results, " + new Date().toLocaleString()];
+  const lines = ["vpn_checkr results :3 " + new Date().toLocaleString()];
   for (const id of BOXES) {
     const box = document.getElementById(id);
     const part = sel => (box.querySelector(sel) || {}).textContent || "";

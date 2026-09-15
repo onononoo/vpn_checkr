@@ -30,7 +30,7 @@ export function createWatch({ checkbox, list, quickCheck, fullCheck }) {
 
   function describeChange(prev, now) {
     if (now.offline) return prev.offline ? null : "could not reach the lookup services, you may be offline :(";
-    if (prev.offline) return "back online, " + (now.vpn ? "vpn on (" : "no vpn (") + now.ip + ") :>";
+    if (prev.offline) return "back online, " + (now.vpn ? "vpn on (" : "no vpn (") + now.ip + ") :3";
     if (prev.vpn && !now.vpn) return "vpn dropped! your ip is now " + now.ip + " D:";
     if (!prev.vpn && now.vpn) return "vpn turned on, your ip is now " + now.ip + " :3";
     if (prev.ip !== now.ip) return "ip changed to " + now.ip + " :o";
@@ -72,7 +72,7 @@ export function createWatch({ checkbox, list, quickCheck, fullCheck }) {
       Promise.resolve(Notification.requestPermission()).catch(() => {});
     }
     timer = setInterval(tick, INTERVAL);
-    log("watching started :>");
+    log("watching started :3");
   }
 
   function stop() {

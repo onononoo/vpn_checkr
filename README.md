@@ -1,6 +1,6 @@
 # <img src="dumbass.webp" alt="" height="32"> vpn_checkr
 
-a simple website that checks if you have a vpn turned on, and if it leaks your real ip address.
+a simple website that checks if you have a vpn turned on, and if it leaks your real ip address :3
 
 ## what it checks
 
@@ -43,10 +43,10 @@ no build step, no dependencies and no api keys. the scripts are javascript modul
 npx serve .
 ```
 
-or host it anywhere that serves static files, like vercel or github pages.
+or host it anywhere that serves static files, like vercel or github pages :3
 
 ## support
 
-this project is open source, so please donate to support me and my projects! btc: `bc1qs4z04ltddh6vaqd4stu3p4vekv253ht4cwqma4` :)
+this project is open source, so please donate to support me and my projects! btc: `bc1qs4z04ltddh6vaqd4stu3p4vekv253ht4cwqma4` :3
 
-my other projects: https://github.com/onononoo/
+my other projects: https://github.com/onononoo/ :3
