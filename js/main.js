@@ -162,6 +162,8 @@ copyIpButton.addEventListener("click", () =>
 
 document.getElementById("copy-results").addEventListener("click", e => copyFrom(e.currentTarget, resultsText()));
 
+document.getElementById("colonthree").addEventListener("click", () => (location.href = "colonthree.html"));
+
 document.getElementById("copy").addEventListener("click", e =>
   copyFrom(e.currentTarget, document.getElementById("btc").textContent)
 );

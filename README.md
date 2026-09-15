@@ -25,6 +25,7 @@ no detection is perfect: small or private vpns can slip through, and some work o
 ## files
 
 - `index.html`: the page
+- `colonthree.html`: one big :3
 - `style.css`: the look
 - `js/main.js`: runs the checks and fills in the boxes
 - `js/lookup.js`: ip address and vpn lookups

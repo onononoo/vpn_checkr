@@ -17,3 +17,6 @@ html, body { background: #fff; color: #000; }
 #history { max-width: 480px; padding-left: 20px; }
 .small { font-size: small; }
 button { font-size: small; }
+
+body.colonthree { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+body.colonthree p { margin: 0; font-size: 40vmin; font-weight: bold; }
