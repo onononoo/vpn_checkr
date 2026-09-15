@@ -11,7 +11,9 @@ when the page opens, your browser asks [ipquery.io](https://ipquery.io/) what ip
 
 vpns almost always run on datacenter servers, so a datacenter ip counts as a vpn. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.
 
-if ipquery.io is unavailable, the page gets your ip from [ipify](https://www.ipify.org/) and relies on the second check.
+ip location databases often disagree, especially about vpn servers, so your location is looked up with five services ([ipwho.is](https://ipwhois.io/), [geojs.io](https://www.geojs.io/), [ipinfo.io](https://ipinfo.io/), [ipapi.is](https://ipapi.is/) and [ipquery.io](https://ipquery.io/)) and the page shows the place most of them agree on. a city is only shown when at least two services name it; otherwise the page falls back to the most agreed region. you can expand the box to see what each service said.
+
+if every lookup fails, the page gets your ip from [ipify](https://www.ipify.org/) and relies on the second check.
 
 ## running it
 
