@@ -5,8 +5,8 @@ import { render, describe, copyFrom } from "./ui.js";
 import { createWatch } from "./watch.js";
 
 const BOXES = ["connection", "webrtc", "dns", "ipv6"];
-const NO_VPN = "no vpn detected, so there is nothing to leak";
-const UNKNOWN = "could not tell if a vpn is on, so leaks cannot be judged";
+const NO_VPN = "no vpn detected, so there is nothing to leak :|";
+const UNKNOWN = "could not tell if a vpn is on, so leaks cannot be judged :/";
 
 const copyIpButton = document.getElementById("copy-ip");
 const checkedEl = document.getElementById("checked");
@@ -26,7 +26,7 @@ async function check() {
   const current = () => token === run;
   const show = (...args) => current() && render(...args);
 
-  for (const id of BOXES) render(id, "checking", "checking...");
+  for (const id of BOXES) render(id, "checking", "checking... :o");
   copyIpButton.hidden = true;
   checkedEl.textContent = "";
   document.title = "vpn_checkr";
@@ -41,8 +41,8 @@ async function check() {
   checkedEl.textContent = "checked " + new Date().toLocaleTimeString();
 
   if (!status) {
-    show("connection", "bad", "could not reach the lookup services. check your connection or ad blocker.");
-    for (const id of BOXES.slice(1)) show(id, "info", "skipped");
+    show("connection", "bad", "could not reach the lookup services. check your connection or ad blocker :(");
+    for (const id of BOXES.slice(1)) show(id, "info", "skipped :|");
     document.title = "offline · vpn_checkr";
     return;
   }
@@ -52,12 +52,12 @@ async function check() {
   // what the leak tests say when there is no vpn to test
   const skip = main.unknown ? UNKNOWN : NO_VPN;
   if (main.unknown) {
-    show("connection", "info", "could not tell if this is a vpn, the lookup services did not answer", [], main.ip);
+    show("connection", "info", "could not tell if this is a vpn, the lookup services did not answer :/", [], main.ip);
   } else {
     show(
       "connection",
       vpn ? "good" : "bad",
-      vpn ? "vpn detected (" + main.reasons.join(", ") + ")" : "no vpn detected",
+      vpn ? "vpn detected (" + main.reasons.join(", ") + ") :3" : "no vpn detected :<",
       [[main.isp, main.asn].filter(Boolean).join(" · ")],
       main.ip
     );
@@ -69,27 +69,27 @@ async function check() {
 
   const ipv6Test = async () => {
     if (!other) {
-      show("ipv6", vpn ? "good" : "info", vpn ? "no leak: " + (v6 ? "you only have ipv6, and it was checked above" : "you have no ipv6 connection") : skip);
+      show("ipv6", vpn ? "good" : "info", vpn ? "no leak: " + (v6 ? "you only have ipv6, and it was checked above" : "you have no ipv6 connection") + " :>" : skip);
     } else if (!vpn) {
       show("ipv6", "info", skip, ["ipv6 address: " + describe(other)]);
     } else if (other.vpn) {
-      show("ipv6", "good", "no leak: your ipv6 traffic goes through a vpn too", [describe(other)]);
+      show("ipv6", "good", "no leak: your ipv6 traffic goes through a vpn too :>", [describe(other)]);
     } else if (other.unknown) {
-      show("ipv6", "info", "could not tell if your ipv6 traffic goes through the vpn", [describe(other)]);
+      show("ipv6", "info", "could not tell if your ipv6 traffic goes through the vpn :/", [describe(other)]);
     } else {
-      show("ipv6", "bad", "ipv6 leak: your ipv6 traffic skips the vpn", [describe(other)]);
+      show("ipv6", "bad", "ipv6 leak: your ipv6 traffic skips the vpn D:", [describe(other)]);
     }
   };
 
   const webrtcTest = async () => {
     const found = await rtcPromise;
     if (found === null) {
-      show("webrtc", vpn ? "good" : "info", vpn ? "no leak: webrtc is turned off in this browser" : skip);
+      show("webrtc", vpn ? "good" : "info", vpn ? "no leak: webrtc is turned off in this browser :>" : skip);
       return;
     }
     const extra = found.filter(ip => !known.has(ip.toLowerCase()));
     if (!extra.length) {
-      const status = found.length ? "no leak: webrtc only shows the address above" : "no leak: webrtc did not show any address";
+      const status = found.length ? "no leak: webrtc only shows the address above :>" : "no leak: webrtc did not show any address :>";
       show("webrtc", vpn ? "good" : "info", vpn ? status : skip, found.length ? ["webrtc shows: " + found.join(", ")] : []);
       return;
     }
@@ -98,18 +98,18 @@ async function check() {
     if (!vpn) {
       show("webrtc", "info", skip, checked.map(r => "webrtc shows: " + describe(r)));
     } else if (leaked.length) {
-      show("webrtc", "bad", "webrtc leak: your real address is visible through webrtc", leaked.map(describe));
+      show("webrtc", "bad", "webrtc leak: your real address is visible through webrtc D:", leaked.map(describe));
     } else if (checked.some(r => r.unknown)) {
-      show("webrtc", "info", "could not tell if the addresses webrtc shows belong to the vpn", checked.map(describe));
+      show("webrtc", "info", "could not tell if the addresses webrtc shows belong to the vpn :/", checked.map(describe));
     } else {
-      show("webrtc", "good", "no leak: webrtc only shows vpn addresses", checked.map(describe));
+      show("webrtc", "good", "no leak: webrtc only shows vpn addresses :3", checked.map(describe));
     }
   };
 
   const dnsTest = async () => {
     const result = await dnsPromise;
     if (!result || !result.servers.length) {
-      show("dns", "info", "could not run the dns test right now");
+      show("dns", "info", "could not run the dns test right now :(");
       return;
     }
     // big resolvers answer from many addresses, so group them by who runs them
@@ -121,9 +121,9 @@ async function check() {
     if (!vpn) {
       show("dns", "info", skip, lines);
     } else if (!result.leaking) {
-      show("dns", "good", "no leak: your dns requests go through the vpn", lines);
+      show("dns", "good", "no leak: your dns requests go through the vpn :3", lines);
     } else {
-      show("dns", "bad", "dns leak: your dns requests may skip the vpn", lines);
+      show("dns", "bad", "dns leak: your dns requests may skip the vpn D:", lines);
     }
   };
 
