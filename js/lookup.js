@@ -59,5 +59,14 @@ export async function checkIp(ip) {
   if (risk.is_datacenter) reasons.push("datacenter");
   if (!reasons.length && listed) reasons.push("known vpn/proxy network");
 
-  return { ip, isp: data.isp && data.isp.org, reasons, vpn: reasons.length > 0 };
+  return { ip, isp: data.isp && data.isp.org, asn: data.isp && data.isp.asn, reasons, vpn: reasons.length > 0 };
+}
+
+// the main check: both addresses, and whether they look like a vpn.
+// resolves to null when no lookup service could be reached.
+export async function checkConnection() {
+  const { v4, v6 } = await publicIps();
+  if (!v4 && !v6) return null;
+  const [main, other] = await Promise.all([checkIp(v4 || v6), v4 && v6 ? checkIp(v6) : null]);
+  return { v4, v6, main, other };
 }

@@ -1,50 +1,62 @@
-import { publicIps, checkIp } from "./lookup.js";
+import { checkConnection, checkIp } from "./lookup.js";
 import { webrtcIps } from "./webrtc.js";
 import { dnsLeakTest } from "./dns.js";
+import { render, describe, copyFrom } from "./ui.js";
+import { createWatch } from "./watch.js";
 
 const BOXES = ["connection", "webrtc", "dns", "ipv6"];
 const NO_VPN = "no vpn detected, so there is nothing to leak";
 
-// state is "checking", "info" (grey), "good" (green) or "bad" (red)
-function render(id, state, status, lines = [], ip = "") {
-  const box = document.getElementById(id);
-  box.className = "box " + state;
-  box.querySelector(".status").textContent = status;
-  box.querySelector(".details").textContent = lines.filter(Boolean).join("\n");
-  const ipEl = box.querySelector(".ip");
-  if (ipEl) ipEl.textContent = ip;
-}
+const copyIpButton = document.getElementById("copy-ip");
+const checkedEl = document.getElementById("checked");
 
-const describe = r => (r.isp ? r.ip + " (" + r.isp + ")" : r.ip);
+const watch = createWatch({
+  checkbox: document.getElementById("watch"),
+  list: document.getElementById("history"),
+  quickCheck: checkConnection,
+  fullCheck: check
+});
 
 // bumped on every check, so answers from an older check never overwrite a newer one
 let run = 0;
 
 async function check() {
   const token = ++run;
-  const show = (...args) => token === run && render(...args);
+  const current = () => token === run;
+  const show = (...args) => current() && render(...args);
+
   for (const id of BOXES) render(id, "checking", "checking...");
+  copyIpButton.hidden = true;
+  checkedEl.textContent = "";
+  document.title = "vpn_checkr";
 
   // these do not need the ip, so start them straight away
   const rtcPromise = webrtcIps();
   const dnsPromise = dnsLeakTest().catch(() => null);
 
-  const { v4, v6 } = await publicIps();
-  if (!v4 && !v6) {
+  const status = await checkConnection();
+  if (!current()) return;
+  watch.update(status);
+  checkedEl.textContent = "checked " + new Date().toLocaleTimeString();
+
+  if (!status) {
     show("connection", "bad", "could not reach the lookup services. check your connection or ad blocker.");
     for (const id of BOXES.slice(1)) show(id, "info", "skipped");
+    document.title = "offline · vpn_checkr";
     return;
   }
 
-  const [main, other] = await Promise.all([checkIp(v4 || v6), v4 && v6 ? checkIp(v6) : null]);
+  const { v4, v6, main, other } = status;
   const vpn = main.vpn;
   show(
     "connection",
     vpn ? "good" : "bad",
     vpn ? "vpn detected (" + main.reasons.join(", ") + ")" : "no vpn detected",
-    [main.isp],
+    [[main.isp, main.asn].filter(Boolean).join(" · ")],
     main.ip
   );
+  copyIpButton.hidden = false;
+  document.title = (vpn ? "vpn on" : "no vpn") + " · vpn_checkr";
 
   const known = new Set([v4, v6].filter(Boolean).map(ip => ip.toLowerCase()));
 
@@ -89,7 +101,12 @@ async function check() {
       show("dns", "info", "could not run the dns test right now");
       return;
     }
-    const lines = result.servers.map(s => "dns server: " + s.ip + (s.org ? " (" + s.org + ")" : ""));
+    // big resolvers answer from many addresses, so group them by who runs them
+    const byOrg = new Map();
+    for (const s of result.servers) byOrg.set(s.org || "unknown", [...(byOrg.get(s.org || "unknown") || []), s.ip]);
+    const lines = [...byOrg].map(([org, ips]) =>
+      ips.length > 2 ? ips.length + " dns servers from " + org : "dns server: " + ips.join(", ") + " (" + org + ")"
+    );
     if (!vpn) {
       show("dns", "info", NO_VPN, lines);
     } else if (!result.leaking) {
@@ -102,17 +119,32 @@ async function check() {
   await Promise.all([ipv6Test(), webrtcTest(), dnsTest()]);
 }
 
+// plain text version of every box, for pasting into a chat or a bug report
+function resultsText() {
+  const lines = ["vpn_checkr results, " + new Date().toLocaleString()];
+  for (const id of BOXES) {
+    const box = document.getElementById(id);
+    const part = sel => (box.querySelector(sel) || {}).textContent || "";
+    const text = [part(".status"), part(".ip"), part(".details").replace(/\n/g, ", ")].filter(Boolean).join(" · ");
+    lines.push(id + ": " + text);
+  }
+  return lines.join("\n");
+}
+
 document.getElementById("recheck").addEventListener("click", check);
 
-document.getElementById("copy").addEventListener("click", async () => {
-  const btn = document.getElementById("copy");
-  try {
-    await navigator.clipboard.writeText(document.getElementById("btc").textContent);
-    btn.textContent = "✓";
-  } catch {
-    btn.textContent = "✗";
-  }
-  setTimeout(() => (btn.textContent = "⧉"), 1500);
+document.addEventListener("keydown", e => {
+  if (e.key === "r" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.matches("input, textarea")) check();
 });
+
+copyIpButton.addEventListener("click", () =>
+  copyFrom(copyIpButton, document.querySelector("#connection .ip").textContent)
+);
+
+document.getElementById("copy-results").addEventListener("click", e => copyFrom(e.currentTarget, resultsText()));
+
+document.getElementById("copy").addEventListener("click", e =>
+  copyFrom(e.currentTarget, document.getElementById("btc").textContent)
+);
 
 check();
