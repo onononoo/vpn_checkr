@@ -38,19 +38,13 @@
   <div id="status">checking...</div>
   <div id="ip"></div>
   <div id="details" class="small"></div>
-  <details id="sources" class="small" hidden>
-    <summary id="sources-summary"></summary>
-    <ul id="sources-list"></ul>
-  </details>
 </div>
 
 <hr>
 
 <h3>how it works</h3>
 
-<p>when you open this page, your browser asks a few ip lookup services what ip address you are connecting from. that address is compared against known vpn providers, proxies, tor exit nodes and datacenters. home and mobile internet comes from an isp, while vpns almost always run on servers in a datacenter, so a datacenter address counts as a vpn.</p>
-
-<p>ip location databases often disagree, especially about vpn servers, so your location is looked up with five services (ipwho.is, geojs.io, ipinfo.io, ipapi.is and ipquery.io) and the page shows the place most of them agree on. open "sources agree" in the box to see what each one said.</p>
+<p>when you open this page, your browser asks <a href="https://ipquery.io/">ipquery.io</a> what ip address you are connecting from. that address is compared against known vpn providers, proxies, tor exit nodes and datacenters. home and mobile internet comes from an isp, while vpns almost always run on servers in a datacenter, so a datacenter address counts as a vpn.</p>
 
 <p>the box turns green if a vpn is detected and red if it is not. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.</p>
 
@@ -65,16 +59,12 @@ const result = document.getElementById("result");
 const statusEl = document.getElementById("status");
 const ipEl = document.getElementById("ip");
 const detailsEl = document.getElementById("details");
-const sourcesEl = document.getElementById("sources");
-const sourcesSummary = document.getElementById("sources-summary");
-const sourcesList = document.getElementById("sources-list");
 
 function show(state, status, ip, details) {
   result.className = state;
   statusEl.textContent = status;
   ipEl.textContent = ip || "";
   detailsEl.textContent = details || "";
-  sourcesEl.hidden = true;
 }
 
 async function getJson(url) {
@@ -83,29 +73,7 @@ async function getJson(url) {
   return res.json();
 }
 
-let countryNames;
-try { countryNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
-const countryName = code => (code && countryNames && countryNames.of(code)) || code;
-
-// every ip location database is wrong sometimes, especially for vpn servers,
-// so ask several and go with the answer most of them agree on.
-// listed in order of trust, which breaks ties.
-const lookups = [
-  ["ipwho.is", "https://ipwho.is/", d => {
-    if (d.success === false) throw new Error(d.message);
-    return { ip: d.ip, city: d.city, region: d.region, country: d.country, isp: d.connection && d.connection.isp };
-  }],
-  ["geojs.io", "https://get.geojs.io/v1/ip/geo.json", d =>
-    ({ ip: d.ip, city: d.city, region: d.region, country: d.country, isp: d.organization_name })],
-  ["ipinfo.io", "https://ipinfo.io/json", d =>
-    ({ ip: d.ip, city: d.city, region: d.region, country: countryName(d.country), isp: d.org && d.org.replace(/^AS\d+\s*/, "") })],
-  ["ipapi.is", "https://api.ipapi.is/", d =>
-    ({ ip: d.ip, city: d.city, region: d.region, country: d.country, isp: d.asn && d.asn.replace(/^AS\d+\s*/, "") })],
-  ["ipquery.io", "https://api.ipquery.io/?format=json", d =>
-    ({ ip: d.ip, city: d.location.city, region: d.location.state, country: d.location.country, isp: d.isp && d.isp.org, risk: d.risk })]
-];
-
-// answers "Y" if the ip belongs to a known proxy, vpn or hosting network
+// second opinion: answers "Y" if the ip belongs to a known proxy, vpn or hosting network
 async function blackbox(ip) {
   try {
     const res = await fetch("https://blackbox.ipinfo.app/lookup/" + ip, { cache: "no-store", signal: AbortSignal.timeout(8000) });
@@ -115,82 +83,37 @@ async function blackbox(ip) {
   }
 }
 
-// the most common value of key(item), ties going to whichever came first
-function mostCommon(items, key) {
-  const counts = new Map();
-  for (const item of items) {
-    const k = key(item);
-    if (k) counts.set(k, (counts.get(k) || 0) + 1);
-  }
-  let best = null;
-  for (const [k, n] of counts) if (!best || n > best[1]) best = [k, n];
-  return best && { value: best[0], count: best[1], items: items.filter(i => key(i) === best[0]) };
-}
-
-const norm = s => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-const place = r => [r.city, r.region, r.country].filter(Boolean).join(", ");
-
 async function check() {
   show("checking", "checking...");
 
-  const settled = await Promise.allSettled(
-    lookups.map(async ([name, url, parse]) => ({ name, ...parse(await getJson(url)) }))
-  );
-  let answers = settled.filter(s => s.status === "fulfilled" && s.value.ip).map(s => s.value);
-
-  if (!answers.length) {
+  let data;
+  try {
+    data = await getJson("https://api.ipquery.io/?format=json");
+  } catch {
+    // main lookup is down, so just find the ip and rely on the second check
     try {
-      answers = [{ name: "ipify", ip: (await getJson("https://api.ipify.org?format=json")).ip }];
+      data = { ip: (await getJson("https://api.ipify.org?format=json")).ip };
     } catch {
-      show("novpn", "could not reach the lookup services. check your connection or ad blocker.");
+      show("novpn", "could not reach the lookup service. check your connection or ad blocker.");
       return;
     }
   }
 
-  // with both ipv4 and ipv6, services can see different addresses; stick to the one most saw
-  const ip = mostCommon(answers, a => a.ip).value;
-  answers = answers.filter(a => a.ip === ip);
-
+  const risk = data.risk || {};
   const reasons = [];
-  const risk = (answers.find(a => a.risk) || {}).risk || {};
   if (risk.is_vpn) reasons.push("vpn");
   if (risk.is_proxy) reasons.push("proxy");
   if (risk.is_tor) reasons.push("tor");
   if (risk.is_datacenter) reasons.push("datacenter");
-  if (!reasons.length && await blackbox(ip)) reasons.push("known vpn/proxy network");
+  if (!reasons.length && await blackbox(data.ip)) reasons.push("known vpn/proxy network");
 
-  const located = answers.filter(a => a.city || a.region || a.country);
-  const byCity = mostCommon(located, a => norm(a.city) && norm(a.city) + "|" + norm(a.country));
-  const byRegion = mostCommon(located, a => norm(a.region) && norm(a.region) + "|" + norm(a.country));
-  // only trust a city when more than one source names it, otherwise fall back to the region
-  let location = "";
-  let agree = 0;
-  if (byCity && (byCity.count > 1 || located.length === 1)) {
-    location = place(byCity.items[0]);
-    agree = byCity.count;
-  } else if (byRegion) {
-    const r = byRegion.items[0];
-    location = [r.region, r.country].filter(Boolean).join(", ");
-    agree = byRegion.count;
-  }
-
-  const isp = (answers.find(a => a.isp) || {}).isp;
-  const details = [isp, location].filter(Boolean).join(" · ");
+  // location is left out on purpose: ip location databases are often wrong about vpn servers
+  const network = data.isp && data.isp.org;
 
   if (reasons.length) {
-    show("vpn", "vpn detected (" + reasons.join(", ") + ")", ip, details);
+    show("vpn", "vpn detected (" + reasons.join(", ") + ")", data.ip, network);
   } else {
-    show("novpn", "no vpn detected", ip, details);
-  }
-
-  if (located.length > 1) {
-    sourcesSummary.textContent = "location: " + agree + " of " + located.length + " sources agree";
-    sourcesList.replaceChildren(...located.map(a => {
-      const li = document.createElement("li");
-      li.textContent = a.name + ": " + place(a);
-      return li;
-    }));
-    sourcesEl.hidden = false;
+    show("novpn", "no vpn detected", data.ip, network);
   }
 }
 
