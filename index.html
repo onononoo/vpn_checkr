@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vpn_checkr</title>
+<link rel="icon" type="image/webp" href="dumbass.webp">
+<meta name="color-scheme" content="light">
+<style>
+  html, body { background: #fff; color: #000; }
+  #result {
+    border: 2px solid;
+    padding: 12px;
+    margin: 16px 0;
+    max-width: 480px;
+    word-break: break-all;
+  }
+  #result.checking { background: #eee; border-color: #999; color: #333; }
+  #result.novpn { background: #ffd6d6; border-color: #c00; color: #800; }
+  #result.vpn { background: #d6ffd6; border-color: #080; color: #040; }
+  .logo { height: 1.2em; vertical-align: middle; }
+  #ip { font-family: monospace; font-size: 1.4em; font-weight: bold; }
+  .small { font-size: small; }
+  button { font-size: small; }
+</style>
+</head>
+<body>
+
+<h1><img src="dumbass.webp" alt="" class="logo"> vpn_checkr</h1>
+
+<p>check if you have a vpn turned on. your ip address is looked up and checked against a list of known vpn, proxy, tor and hosting networks.</p>
+
+<hr>
+
+<p><b>your connection:</b> <button id="recheck">check again</button></p>
+
+<div id="result" class="checking">
+  <div id="status">checking...</div>
+  <div id="ip"></div>
+  <div id="details" class="small"></div>
+</div>
+
+<hr>
+
+<h3>how it works</h3>
+
+<p>when you open this page, your browser asks <a href="https://ipquery.io/">ipquery.io</a> what ip address you are connecting from. that address is compared against known vpn providers, proxies, tor exit nodes and datacenters. home and mobile internet comes from an isp, while vpns almost always run on servers in a datacenter, so a datacenter address counts as a vpn.</p>
+
+<p>the box turns green if a vpn is detected and red if it is not. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.</p>
+
+<hr>
+
+<p class="small">this project is open source, so please donate to support me and my projects! btc: <span id="btc">bc1qs4z04ltddh6vaqd4stu3p4vekv253ht4cwqma4</span> <button id="copy" title="copy address">⧉</button> :)</p>
+
+<p class="small">source code and my other projects: <a href="https://github.com/onononoo/vpn_checkr">https://github.com/onononoo/vpn_checkr</a> :: <a href="https://github.com/onononoo/">https://github.com/onononoo/</a></p>
+
+<script>
+const result = document.getElementById("result");
+const statusEl = document.getElementById("status");
+const ipEl = document.getElementById("ip");
+const detailsEl = document.getElementById("details");
+
+function show(state, status, ip, details) {
+  result.className = state;
+  statusEl.textContent = status;
+  ipEl.textContent = ip || "";
+  detailsEl.textContent = details || "";
+}
+
+async function getJson(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("lookup failed (" + res.status + ")");
+  return res.json();
+}
+
+// second opinion: answers "Y" if the ip belongs to a known proxy, vpn or hosting network
+async function blackbox(ip) {
+  try {
+    const res = await fetch("https://blackbox.ipinfo.app/lookup/" + ip, { cache: "no-store" });
+    return (await res.text()).trim() === "Y";
+  } catch {
+    return false;
+  }
+}
+
+async function check() {
+  show("checking", "checking...");
+
+  let data;
+  try {
+    data = await getJson("https://api.ipquery.io/?format=json");
+  } catch {
+    // main lookup is down, so just find the ip and rely on the second check
+    try {
+      data = { ip: (await getJson("https://api.ipify.org?format=json")).ip };
+    } catch {
+      show("novpn", "could not reach the lookup service. check your connection or ad blocker.");
+      return;
+    }
+  }
+
+  const risk = data.risk || {};
+  const reasons = [];
+  if (risk.is_vpn) reasons.push("vpn");
+  if (risk.is_proxy) reasons.push("proxy");
+  if (risk.is_tor) reasons.push("tor");
+  if (risk.is_datacenter) reasons.push("datacenter");
+  if (!reasons.length && await blackbox(data.ip)) reasons.push("known vpn/proxy network");
+
+  const network = [
+    data.isp && data.isp.org,
+    data.location && [data.location.city, data.location.country].filter(Boolean).join(", ")
+  ].filter(Boolean).join(" · ");
+
+  if (reasons.length) {
+    show("vpn", "vpn detected (" + reasons.join(", ") + ")", data.ip, network);
+  } else {
+    show("novpn", "no vpn detected", data.ip, network);
+  }
+}
+
+document.getElementById("recheck").addEventListener("click", check);
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const btn = document.getElementById("copy");
+  try {
+    await navigator.clipboard.writeText(document.getElementById("btc").textContent);
+    btn.textContent = "✓";
+  } catch {
+    btn.textContent = "✗";
+  }
+  setTimeout(() => (btn.textContent = "⧉"), 1500);
+});
+
+check();
+</script>
+
+</body>
+</html>
