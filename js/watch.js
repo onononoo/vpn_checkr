@@ -8,6 +8,7 @@ export function createWatch({ checkbox, list, quickCheck, fullCheck }) {
   let timer = null;
   let busy = false;
   let last = null; // { vpn, ip }, or { offline: true }
+  let lastTick = 0;
 
   function log(text) {
     const li = document.createElement("li");
@@ -39,6 +40,8 @@ export function createWatch({ checkbox, list, quickCheck, fullCheck }) {
   // called with every connection result, from the page or from the timer.
   // returns true when something changed while watching.
   function update(status) {
+    // an ip the services could not judge says nothing about the vpn, so it is not a change
+    if (status && status.main.unknown) return false;
     const now = status ? { vpn: status.main.vpn, ip: status.main.ip } : { offline: true };
     const prev = last;
     last = now;
@@ -54,6 +57,7 @@ export function createWatch({ checkbox, list, quickCheck, fullCheck }) {
   async function tick() {
     if (busy) return;
     busy = true;
+    lastTick = Date.now();
     try {
       // a full check reruns the leak tests too, which is only worth it when something changed
       if (update(await quickCheck())) fullCheck();
@@ -83,6 +87,10 @@ export function createWatch({ checkbox, list, quickCheck, fullCheck }) {
   checkbox.addEventListener("change", () => (checkbox.checked ? start() : stop()));
   window.addEventListener("online", () => timer && tick());
   window.addEventListener("offline", () => timer && update(null));
+  // background tabs get their timers slowed down, so catch up as soon as the tab is looked at again
+  document.addEventListener("visibilitychange", () => {
+    if (timer && !document.hidden && Date.now() - lastTick > INTERVAL) tick();
+  });
 
-  return { update };
+  return { update, watching: () => timer !== null };
 }

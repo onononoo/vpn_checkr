@@ -33,25 +33,29 @@ export async function publicIps() {
   return ip && ip.includes(":") ? { v4: null, v6: ip } : { v4: ip, v6: null };
 }
 
-// answers "Y" if the ip belongs to a known proxy, vpn or hosting network
+// answers "Y" if the ip belongs to a known proxy, vpn or hosting network.
+// null when blackbox did not answer.
 async function blackbox(ip) {
   try {
     return (await getText("https://blackbox.ipinfo.app/lookup/" + ip)).trim() === "Y";
   } catch {
-    return false;
+    return null;
   }
 }
 
-// returns { ip, isp, reasons, vpn } where reasons says why the ip looks like a vpn
+// returns { ip, isp, asn, reasons, vpn, unknown } where reasons says why the ip looks like a vpn,
+// and unknown means neither service answered, so "no vpn" cannot be trusted
 export async function checkIp(ip) {
   if (!/^[0-9a-f:.]+$/i.test(ip)) throw new Error("not an ip address: " + ip);
 
+  const url = "https://api.ipquery.io/" + ip + "?format=json";
   const [data, listed] = await Promise.all([
-    getJson("https://api.ipquery.io/" + ip + "?format=json").catch(() => ({})),
+    // tried twice, since a missing answer here would otherwise look like "no vpn"
+    getJson(url).catch(() => getJson(url)).catch(() => null),
     blackbox(ip)
   ]);
 
-  const risk = data.risk || {};
+  const risk = (data && data.risk) || {};
   const reasons = [];
   if (risk.is_vpn) reasons.push("vpn");
   if (risk.is_proxy) reasons.push("proxy");
@@ -59,7 +63,8 @@ export async function checkIp(ip) {
   if (risk.is_datacenter) reasons.push("datacenter");
   if (!reasons.length && listed) reasons.push("known vpn/proxy network");
 
-  return { ip, isp: data.isp && data.isp.org, asn: data.isp && data.isp.asn, reasons, vpn: reasons.length > 0 };
+  const isp = (data && data.isp) || {};
+  return { ip, isp: isp.org, asn: isp.asn, reasons, vpn: reasons.length > 0, unknown: !data && listed === null };
 }
 
 // the main check: both addresses, and whether they look like a vpn.

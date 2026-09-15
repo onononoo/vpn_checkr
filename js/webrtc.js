@@ -4,17 +4,22 @@
 const STUN = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }];
 
 function isPublic(ip) {
-  if (ip.includes(":")) {
-    const v6 = ip.toLowerCase();
-    return !(v6 === "::1" || v6.startsWith("fe80:") || v6.startsWith("fc") || v6.startsWith("fd"));
+  const v6 = ip.toLowerCase();
+  // "::ffff:192.168.1.2" is an ipv4 address written as ipv6
+  if (v6.startsWith("::ffff:") && v6.includes(".")) return isPublic(v6.slice(7));
+  if (v6.includes(":")) {
+    // f[c-f] covers private, link-local and multicast addresses, 2001:db8: is for documentation
+    return !(v6 === "::" || v6 === "::1" || /^f[c-f]/.test(v6) || v6.startsWith("2001:db8:"));
   }
-  const [a, b] = ip.split(".").map(Number);
+  const [a, b, c] = ip.split(".").map(Number);
   return !(
-    a === 0 || a === 10 || a === 127 ||
+    a === 0 || a === 10 || a === 127 || a >= 224 ||
     (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168)
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19))
   );
 }
 

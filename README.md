@@ -12,11 +12,11 @@ a simple website that checks if you have a vpn turned on, and if it leaks your r
 - **dns**: the browser looks up a few made up names under [bash.ws](https://bash.ws/dnsleak), which records which dns servers asked. if they are not on your vpn's network, dns is leaking.
 - **ipv6**: some vpns only cover ipv4. the page looks up your ipv6 address separately and checks whether it also belongs to a vpn.
 
-**watch mode.** tick the watch box and the page checks your connection every 30 seconds. if your vpn drops, comes back, or your ip changes, it adds a line to the history and sends a browser notification (if you allow them). useful for catching a vpn that disconnects without its kill switch noticing. the history only lives in the tab.
+**watch mode.** tick the watch box and the page checks your connection every 30 seconds. if your vpn drops, comes back, or your ip changes, it adds a line to the history and sends a browser notification (if you allow them). useful for catching a vpn that disconnects without its kill switch noticing. when you come back to the tab it checks straight away, instead of waiting on a slowed down background timer. the history only lives in the tab.
 
-**extras.** the tab title shows `vpn on` or `no vpn`, so you can see it from another tab. there are buttons to copy your ip or all the results as plain text, the network's asn is shown next to its name, and pressing `r` checks again.
+**extras.** the tab title shows `vpn on`, `no vpn` or `vpn unknown`, so you can see it from another tab. there are buttons to copy your ip or all the results as plain text, the network's asn is shown next to its name, pressing `r` checks again, and the page checks again by itself when your connection comes back after dropping. copy results also includes the watch history.
 
-green means everything is fine, red means something is wrong, and grey means there was nothing to test (for example, leak tests when no vpn is on).
+green means everything is fine, red means something is wrong, and grey means there was nothing to test (for example, leak tests when no vpn is on) or that the lookup services did not answer. when that happens the page says it could not tell instead of guessing "no vpn", and watch mode does not count it as the vpn dropping.
 
 the page shows your ip address and network provider, but not your location. ip location databases are often wrong about vpn servers, sometimes by thousands of miles, so showing a location would be misleading.
 

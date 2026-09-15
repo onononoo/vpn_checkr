@@ -6,6 +6,7 @@ import { createWatch } from "./watch.js";
 
 const BOXES = ["connection", "webrtc", "dns", "ipv6"];
 const NO_VPN = "no vpn detected, so there is nothing to leak";
+const UNKNOWN = "could not tell if a vpn is on, so leaks cannot be judged";
 
 const copyIpButton = document.getElementById("copy-ip");
 const checkedEl = document.getElementById("checked");
@@ -48,25 +49,33 @@ async function check() {
 
   const { v4, v6, main, other } = status;
   const vpn = main.vpn;
-  show(
-    "connection",
-    vpn ? "good" : "bad",
-    vpn ? "vpn detected (" + main.reasons.join(", ") + ")" : "no vpn detected",
-    [[main.isp, main.asn].filter(Boolean).join(" · ")],
-    main.ip
-  );
+  // what the leak tests say when there is no vpn to test
+  const skip = main.unknown ? UNKNOWN : NO_VPN;
+  if (main.unknown) {
+    show("connection", "info", "could not tell if this is a vpn, the lookup services did not answer", [], main.ip);
+  } else {
+    show(
+      "connection",
+      vpn ? "good" : "bad",
+      vpn ? "vpn detected (" + main.reasons.join(", ") + ")" : "no vpn detected",
+      [[main.isp, main.asn].filter(Boolean).join(" · ")],
+      main.ip
+    );
+  }
   copyIpButton.hidden = false;
-  document.title = (vpn ? "vpn on" : "no vpn") + " · vpn_checkr";
+  document.title = (main.unknown ? "vpn unknown" : vpn ? "vpn on" : "no vpn") + " · vpn_checkr";
 
   const known = new Set([v4, v6].filter(Boolean).map(ip => ip.toLowerCase()));
 
   const ipv6Test = async () => {
     if (!other) {
-      show("ipv6", vpn ? "good" : "info", vpn ? "no leak: " + (v6 ? "you only have ipv6, and it was checked above" : "you have no ipv6 connection") : NO_VPN);
+      show("ipv6", vpn ? "good" : "info", vpn ? "no leak: " + (v6 ? "you only have ipv6, and it was checked above" : "you have no ipv6 connection") : skip);
     } else if (!vpn) {
-      show("ipv6", "info", NO_VPN, ["ipv6 address: " + describe(other)]);
+      show("ipv6", "info", skip, ["ipv6 address: " + describe(other)]);
     } else if (other.vpn) {
       show("ipv6", "good", "no leak: your ipv6 traffic goes through a vpn too", [describe(other)]);
+    } else if (other.unknown) {
+      show("ipv6", "info", "could not tell if your ipv6 traffic goes through the vpn", [describe(other)]);
     } else {
       show("ipv6", "bad", "ipv6 leak: your ipv6 traffic skips the vpn", [describe(other)]);
     }
@@ -75,23 +84,25 @@ async function check() {
   const webrtcTest = async () => {
     const found = await rtcPromise;
     if (found === null) {
-      show("webrtc", vpn ? "good" : "info", vpn ? "no leak: webrtc is turned off in this browser" : NO_VPN);
+      show("webrtc", vpn ? "good" : "info", vpn ? "no leak: webrtc is turned off in this browser" : skip);
       return;
     }
     const extra = found.filter(ip => !known.has(ip.toLowerCase()));
     if (!extra.length) {
       const status = found.length ? "no leak: webrtc only shows the address above" : "no leak: webrtc did not show any address";
-      show("webrtc", vpn ? "good" : "info", vpn ? status : NO_VPN, found.length ? ["webrtc shows: " + found.join(", ")] : []);
+      show("webrtc", vpn ? "good" : "info", vpn ? status : skip, found.length ? ["webrtc shows: " + found.join(", ")] : []);
       return;
     }
     const checked = await Promise.all(extra.map(checkIp));
-    const leaked = checked.filter(r => !r.vpn);
+    const leaked = checked.filter(r => !r.vpn && !r.unknown);
     if (!vpn) {
-      show("webrtc", "info", NO_VPN, checked.map(r => "webrtc shows: " + describe(r)));
-    } else if (!leaked.length) {
-      show("webrtc", "good", "no leak: webrtc only shows vpn addresses", checked.map(describe));
-    } else {
+      show("webrtc", "info", skip, checked.map(r => "webrtc shows: " + describe(r)));
+    } else if (leaked.length) {
       show("webrtc", "bad", "webrtc leak: your real address is visible through webrtc", leaked.map(describe));
+    } else if (checked.some(r => r.unknown)) {
+      show("webrtc", "info", "could not tell if the addresses webrtc shows belong to the vpn", checked.map(describe));
+    } else {
+      show("webrtc", "good", "no leak: webrtc only shows vpn addresses", checked.map(describe));
     }
   };
 
@@ -108,7 +119,7 @@ async function check() {
       ips.length > 2 ? ips.length + " dns servers from " + org : "dns server: " + ips.join(", ") + " (" + org + ")"
     );
     if (!vpn) {
-      show("dns", "info", NO_VPN, lines);
+      show("dns", "info", skip, lines);
     } else if (!result.leaking) {
       show("dns", "good", "no leak: your dns requests go through the vpn", lines);
     } else {
@@ -128,14 +139,22 @@ function resultsText() {
     const text = [part(".status"), part(".ip"), part(".details").replace(/\n/g, ", ")].filter(Boolean).join(" · ");
     lines.push(id + ": " + text);
   }
+  const history = [...document.querySelectorAll("#history li")].map(li => "  " + li.textContent);
+  if (history.length) lines.push("watch history:", ...history);
   return lines.join("\n");
 }
 
 document.getElementById("recheck").addEventListener("click", check);
 
 document.addEventListener("keydown", e => {
-  if (e.key === "r" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.matches("input, textarea")) check();
+  if (e.key !== "r" || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.isContentEditable || e.target.matches("input, textarea, select")) return;
+  check();
 });
+
+// results from before the network dropped are stale, so check again once it is back.
+// watch mode already does this itself.
+window.addEventListener("online", () => watch.watching() || check());
 
 copyIpButton.addEventListener("click", () =>
   copyFrom(copyIpButton, document.querySelector("#connection .ip").textContent)

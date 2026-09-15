@@ -21,28 +21,28 @@
 
 <p><b>1. your connection:</b> <button id="recheck" title="shortcut: r">check again</button> <button id="copy-results">copy results</button> <span id="checked" class="small"></span></p>
 
-<div id="connection" class="box checking">
+<div id="connection" class="box checking" aria-live="polite">
   <div class="status">checking...</div>
   <div><span class="ip"></span> <button id="copy-ip" title="copy ip address" hidden>⧉</button></div>
   <div class="details small"></div>
 </div>
 
 <p class="small"><label><input type="checkbox" id="watch"> watch: check every 30 seconds and warn me if my vpn drops or my ip changes</label></p>
-<ul id="history" class="small" hidden></ul>
+<ul id="history" class="small" aria-live="polite" hidden></ul>
 
 <p><b>2. leak tests:</b> <span class="small">a vpn can be on and still give away your real address.</span></p>
 
-<div id="webrtc" class="box checking">
+<div id="webrtc" class="box checking" aria-live="polite">
   <b>webrtc:</b> <span class="status">checking...</span>
   <div class="details small"></div>
 </div>
 
-<div id="dns" class="box checking">
+<div id="dns" class="box checking" aria-live="polite">
   <b>dns:</b> <span class="status">checking...</span>
   <div class="details small"></div>
 </div>
 
-<div id="ipv6" class="box checking">
+<div id="ipv6" class="box checking" aria-live="polite">
   <b>ipv6:</b> <span class="status">checking...</span>
   <div class="details small"></div>
 </div>
@@ -57,9 +57,9 @@
 
 <p><b>webrtc</b> lets websites find your address for video calls, through its own connection. if that connection skips the vpn, it shows your real address. <b>dns</b> turns website names into addresses; <a href="https://bash.ws/dnsleak">bash.ws</a> records which dns servers your browser used, and if they are not on your vpn's network, whoever runs them can see the sites you visit. <b>ipv6</b> is a second kind of internet address, and some vpns only cover the older ipv4, so ipv6 traffic slips around them.</p>
 
-<p><b>watch</b> keeps checking your connection in the background, so you find out if your vpn drops without its kill switch catching it. if your browser allows notifications, you get one when something changes. the list of changes only lives in this tab and is gone when you close it. browsers slow down timers in background tabs, so checks there can take up to a minute.</p>
+<p><b>watch</b> keeps checking your connection in the background, so you find out if your vpn drops without its kill switch catching it. if your browser allows notifications, you get one when something changes. the list of changes only lives in this tab and is gone when you close it. browsers slow down timers in background tabs, so checks there can take up to a minute, but it checks again as soon as you come back to the tab.</p>
 
-<p>green means everything is fine, red means something is wrong, and grey means there was nothing to test. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.</p>
+<p>green means everything is fine, red means something is wrong, and grey means there was nothing to test, or the lookup services did not answer well enough to tell. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.</p>
 
 <hr>
 
