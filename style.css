@@ -1,0 +1,18 @@
+html, body { background: #fff; color: #000; }
+
+.box {
+  border: 2px solid;
+  padding: 12px;
+  margin: 12px 0;
+  max-width: 480px;
+  word-break: break-all;
+}
+.box.checking, .box.info { background: #eee; border-color: #999; color: #333; }
+.box.bad { background: #ffd6d6; border-color: #c00; color: #800; }
+.box.good { background: #d6ffd6; border-color: #080; color: #040; }
+.box .details { white-space: pre-line; }
+
+.logo { height: 1.2em; vertical-align: middle; }
+.ip { font-family: monospace; font-size: 1.4em; font-weight: bold; }
+.small { font-size: small; }
+button { font-size: small; }

@@ -3,135 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="check if you have a vpn turned on, and if it leaks your real ip through webrtc, dns or ipv6.">
 <title>vpn_checkr</title>
 <link rel="icon" type="image/webp" href="dumbass.webp">
-<meta name="color-scheme" content="light">
-<style>
-  html, body { background: #fff; color: #000; }
-  #result {
-    border: 2px solid;
-    padding: 12px;
-    margin: 16px 0;
-    max-width: 480px;
-    word-break: break-all;
-  }
-  #result.checking { background: #eee; border-color: #999; color: #333; }
-  #result.novpn { background: #ffd6d6; border-color: #c00; color: #800; }
-  #result.vpn { background: #d6ffd6; border-color: #080; color: #040; }
-  .logo { height: 1.2em; vertical-align: middle; }
-  #ip { font-family: monospace; font-size: 1.4em; font-weight: bold; }
-  .small { font-size: small; }
-  button { font-size: small; }
-</style>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="js/main.js"></script>
 </head>
 <body>
 
 <h1><img src="dumbass.webp" alt="" class="logo"> vpn_checkr</h1>
 
-<p>check if you have a vpn turned on. your ip address is looked up and checked against a list of known vpn, proxy, tor and hosting networks.</p>
+<p>check if you have a vpn turned on, and if it leaks your real ip address. everything runs in this browser, nothing is saved anywhere.</p>
 
 <hr>
 
-<p><b>your connection:</b> <button id="recheck">check again</button></p>
+<p><b>1. your connection:</b> <button id="recheck">check again</button></p>
 
-<div id="result" class="checking">
-  <div id="status">checking...</div>
-  <div id="ip"></div>
-  <div id="details" class="small"></div>
+<div id="connection" class="box checking">
+  <div class="status">checking...</div>
+  <div class="ip"></div>
+  <div class="details small"></div>
 </div>
+
+<p><b>2. leak tests:</b> <span class="small">a vpn can be on and still give away your real address.</span></p>
+
+<div id="webrtc" class="box checking">
+  <b>webrtc:</b> <span class="status">checking...</span>
+  <div class="details small"></div>
+</div>
+
+<div id="dns" class="box checking">
+  <b>dns:</b> <span class="status">checking...</span>
+  <div class="details small"></div>
+</div>
+
+<div id="ipv6" class="box checking">
+  <b>ipv6:</b> <span class="status">checking...</span>
+  <div class="details small"></div>
+</div>
+
+<noscript><p>this page needs javascript to look up your ip address.</p></noscript>
 
 <hr>
 
 <h3>how it works</h3>
 
-<p>when you open this page, your browser asks <a href="https://ipquery.io/">ipquery.io</a> what ip address you are connecting from. that address is compared against known vpn providers, proxies, tor exit nodes and datacenters. home and mobile internet comes from an isp, while vpns almost always run on servers in a datacenter, so a datacenter address counts as a vpn.</p>
+<p>your ip address is looked up with <a href="https://www.ipify.org/">ipify</a> and checked against known vpn providers, proxies, tor exit nodes and datacenters with <a href="https://ipquery.io/">ipquery.io</a> and <a href="https://blackbox.ipinfo.app/">blackbox</a>. home and mobile internet comes from an isp, while vpns almost always run on servers in a datacenter, so a datacenter address counts as a vpn. your location is not shown, because ip location databases are often wrong about vpn servers.</p>
 
-<p>the box turns green if a vpn is detected and red if it is not. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.</p>
+<p><b>webrtc</b> lets websites find your address for video calls, through its own connection. if that connection skips the vpn, it shows your real address. <b>dns</b> turns website names into addresses; <a href="https://bash.ws/dnsleak">bash.ws</a> records which dns servers your browser used, and if they are not on your vpn's network, whoever runs them can see the sites you visit. <b>ipv6</b> is a second kind of internet address, and some vpns only cover the older ipv4, so ipv6 traffic slips around them.</p>
+
+<p>green means everything is fine, red means something is wrong, and grey means there was nothing to test. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.</p>
 
 <hr>
 
 <p class="small">this project is open source, so please donate to support me and my projects! btc: <span id="btc">bc1qs4z04ltddh6vaqd4stu3p4vekv253ht4cwqma4</span> <button id="copy" title="copy address">⧉</button> :)</p>
 
 <p class="small">source code and my other projects: <a href="https://github.com/onononoo/vpn_checkr">https://github.com/onononoo/vpn_checkr</a> :: <a href="https://github.com/onononoo/">https://github.com/onononoo/</a></p>
-
-<script>
-const result = document.getElementById("result");
-const statusEl = document.getElementById("status");
-const ipEl = document.getElementById("ip");
-const detailsEl = document.getElementById("details");
-
-function show(state, status, ip, details) {
-  result.className = state;
-  statusEl.textContent = status;
-  ipEl.textContent = ip || "";
-  detailsEl.textContent = details || "";
-}
-
-async function getJson(url) {
-  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error("lookup failed (" + res.status + ")");
-  return res.json();
-}
-
-// second opinion: answers "Y" if the ip belongs to a known proxy, vpn or hosting network
-async function blackbox(ip) {
-  try {
-    const res = await fetch("https://blackbox.ipinfo.app/lookup/" + ip, { cache: "no-store", signal: AbortSignal.timeout(8000) });
-    return (await res.text()).trim() === "Y";
-  } catch {
-    return false;
-  }
-}
-
-async function check() {
-  show("checking", "checking...");
-
-  let data;
-  try {
-    data = await getJson("https://api.ipquery.io/?format=json");
-  } catch {
-    // main lookup is down, so just find the ip and rely on the second check
-    try {
-      data = { ip: (await getJson("https://api.ipify.org?format=json")).ip };
-    } catch {
-      show("novpn", "could not reach the lookup service. check your connection or ad blocker.");
-      return;
-    }
-  }
-
-  const risk = data.risk || {};
-  const reasons = [];
-  if (risk.is_vpn) reasons.push("vpn");
-  if (risk.is_proxy) reasons.push("proxy");
-  if (risk.is_tor) reasons.push("tor");
-  if (risk.is_datacenter) reasons.push("datacenter");
-  if (!reasons.length && await blackbox(data.ip)) reasons.push("known vpn/proxy network");
-
-  // location is left out on purpose: ip location databases are often wrong about vpn servers
-  const network = data.isp && data.isp.org;
-
-  if (reasons.length) {
-    show("vpn", "vpn detected (" + reasons.join(", ") + ")", data.ip, network);
-  } else {
-    show("novpn", "no vpn detected", data.ip, network);
-  }
-}
-
-document.getElementById("recheck").addEventListener("click", check);
-
-document.getElementById("copy").addEventListener("click", async () => {
-  const btn = document.getElementById("copy");
-  try {
-    await navigator.clipboard.writeText(document.getElementById("btc").textContent);
-    btn.textContent = "✓";
-  } catch {
-    btn.textContent = "✗";
-  }
-  setTimeout(() => (btn.textContent = "⧉"), 1500);
-});
-
-check();
-</script>
 
 </body>
 </html>

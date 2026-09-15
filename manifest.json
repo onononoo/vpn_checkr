@@ -1,0 +1,12 @@
+{
+  "name": "vpn_checkr",
+  "short_name": "vpn_checkr",
+  "description": "check if you have a vpn turned on, and if it leaks your real ip through webrtc, dns or ipv6.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "dumbass.webp", "sizes": "1080x1080", "type": "image/webp", "purpose": "any" }
+  ]
+}

@@ -1,23 +1,43 @@
 # <img src="dumbass.webp" alt="" height="32"> vpn_checkr
 
-a simple website that checks if you have a vpn turned on, using your ip address.
+a simple website that checks if you have a vpn turned on, and if it leaks your real ip address.
 
-## how it works
+## what it checks
 
-when the page opens, your browser asks [ipquery.io](https://ipquery.io/) what ip address you are connecting from. that address is checked against known vpn providers, proxies, tor exit nodes and datacenters, with [ipinfo.app's blackbox](https://blackbox.ipinfo.app/) as a second check.
+**1. your connection.** your ip address comes from [ipify](https://www.ipify.org/) and is checked against known vpn providers, proxies, tor exit nodes and datacenters with [ipquery.io](https://ipquery.io/), with [ipinfo.app's blackbox](https://blackbox.ipinfo.app/) as a second check. vpns almost always run on datacenter servers, so a datacenter ip counts as a vpn.
 
-- **green box**: a vpn was detected, and your ip address is shown
-- **red box**: no vpn was detected, and your ip address is shown
+**2. leak tests.** a vpn can be on and still give away your real address:
 
-vpns almost always run on datacenter servers, so a datacenter ip counts as a vpn. no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.
+- **webrtc**: browsers can find your public address through a stun server for video calls. if that request skips the vpn, it shows your real ip. the page compares what webrtc sees with the address above.
+- **dns**: the browser looks up a few made up names under [bash.ws](https://bash.ws/dnsleak), which records which dns servers asked. if they are not on your vpn's network, dns is leaking.
+- **ipv6**: some vpns only cover ipv4. the page looks up your ipv6 address separately and checks whether it also belongs to a vpn.
+
+green means everything is fine, red means something is wrong, and grey means there was nothing to test (for example, leak tests when no vpn is on).
 
 the page shows your ip address and network provider, but not your location. ip location databases are often wrong about vpn servers, sometimes by thousands of miles, so showing a location would be misleading.
 
-if ipquery.io is unavailable, the page gets your ip from [ipify](https://www.ipify.org/) and relies on the second check.
+no detection is perfect: small or private vpns can slip through, and some work or school networks can look like a vpn.
+
+## files
+
+- `index.html`: the page
+- `style.css`: the look
+- `js/main.js`: runs the checks and fills in the boxes
+- `js/lookup.js`: ip address and vpn lookups
+- `js/webrtc.js`: webrtc leak test
+- `js/dns.js`: dns leak test
+- `manifest.json`: lets the site be installed as an app
+- `vercel.json`: security headers when hosted on vercel
 
 ## running it
 
-it is a single `index.html` file with no build step, no dependencies and no api keys. open it in a browser, or host it anywhere that serves static files (github pages works).
+no build step, no dependencies and no api keys. the scripts are javascript modules, which browsers will not load from a file opened straight off your computer, so serve the folder instead:
+
+```bash
+npx serve .
+```
+
+or host it anywhere that serves static files, like vercel or github pages.
 
 ## support
 
