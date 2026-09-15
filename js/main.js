@@ -29,7 +29,7 @@ async function check() {
   for (const id of BOXES) render(id, "checking", "checking... :3");
   copyIpButton.hidden = true;
   checkedEl.textContent = "";
-  document.title = "vpn_checkr";
+  document.title = "vpn_checkr :3";
 
   // these do not need the ip, so start them straight away
   const rtcPromise = webrtcIps();
@@ -43,7 +43,7 @@ async function check() {
   if (!status) {
     show("connection", "bad", "could not reach the lookup services. check your connection or ad blocker :(");
     for (const id of BOXES.slice(1)) show(id, "info", "skipped :|");
-    document.title = "offline · vpn_checkr";
+    document.title = "offline :( · vpn_checkr :3";
     return;
   }
 
@@ -63,7 +63,7 @@ async function check() {
     );
   }
   copyIpButton.hidden = false;
-  document.title = (main.unknown ? "vpn unknown" : vpn ? "vpn on :3" : "no vpn") + " · vpn_checkr";
+  document.title = (main.unknown ? "vpn unknown :/" : vpn ? "vpn on :3" : "no vpn :<") + " · vpn_checkr :3";
 
   const known = new Set([v4, v6].filter(Boolean).map(ip => ip.toLowerCase()));
 
